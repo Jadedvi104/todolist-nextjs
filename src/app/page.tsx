@@ -1,20 +1,66 @@
-"use client"
+"use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+interface Task {
+  text: string;
+  completed: boolean;
+}
 
 export default function Home() {
-  const [tasks, setTasks] = useState<string[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [newTask, setNewTask] = useState("");
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingText, setEditingText] = useState("");
+
+  // Load tasks from localStorage on initial render
+  useEffect(() => {
+    const storedTasks = localStorage.getItem("tasks");
+    if (storedTasks) {
+      setTasks(JSON.parse(storedTasks));
+    }
+  }, []);
+
+  // Save tasks to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem("tasks", JSON.stringify(tasks));
+  }, [tasks]);
 
   const addTask = () => {
     if (newTask.trim()) {
-      setTasks([...tasks, newTask.trim()]);
+      setTasks([...tasks, { text: newTask.trim(), completed: false }]);
       setNewTask("");
     }
   };
 
   const removeTask = (index: number) => {
     setTasks(tasks.filter((_, i) => i !== index));
+  };
+
+  const toggleTaskCompletion = (index: number) => {
+    const updatedTasks = [...tasks];
+    updatedTasks[index].completed = !updatedTasks[index].completed;
+    setTasks(updatedTasks);
+  };
+
+  const startEditing = (index: number) => {
+    setEditingIndex(index);
+    setEditingText(tasks[index].text);
+  };
+
+  const saveEdit = () => {
+    if (editingText.trim() && editingIndex !== null) {
+      const updatedTasks = [...tasks];
+      updatedTasks[editingIndex].text = editingText.trim();
+      setTasks(updatedTasks);
+      setEditingIndex(null);
+      setEditingText("");
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingIndex(null);
+    setEditingText("");
   };
 
   return (
@@ -48,15 +94,58 @@ export default function Home() {
           {tasks.map((task, index) => (
             <li
               key={index}
-              className="flex justify-between items-center px-4 py-2 border-b border-gray-200"
+              className={`flex justify-between items-center px-4 py-2 border-b border-gray-200 ${
+                task.completed ? "line-through text-gray-500" : ""
+              }`}
             >
-              <span>{task}</span>
-              <button
-                onClick={() => removeTask(index)}
-                className="text-red-500 hover:text-red-700"
-              >
-                Remove
-              </button>
+              {editingIndex === index ? (
+                <div className="flex w-full gap-4">
+                  <input
+                    type="text"
+                    value={editingText}
+                    onChange={(e) => setEditingText(e.target.value)}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    onClick={saveEdit}
+                    className="px-4 py-2 text-white bg-green-500 rounded-md hover:bg-green-600"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={cancelEdit}
+                    className="px-4 py-2 text-white bg-gray-500 rounded-md hover:bg-gray-600"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={task.completed}
+                      onChange={() => toggleTaskCompletion(index)}
+                      className="w-4 h-4"
+                    />
+                    <span>{task.text}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => startEditing(index)}
+                      className="text-blue-500 hover:text-blue-700"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => removeTask(index)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </>
+              )}
             </li>
           ))}
         </ul>
